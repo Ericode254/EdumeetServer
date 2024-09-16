@@ -1,0 +1,99 @@
+import express from 'express'
+import bcryt from 'bcrypt'
+import jwt from 'jsonwebtoken'
+import { User } from '../Models/Users.js'
+import nodemailer from "nodemailer"
+
+const router = express.Router()
+
+router.post("/signup", async (req, res) => {
+    const {username, email, password} = req.body
+    const user = await User.findOne({email})
+
+    if (user) {
+        return res.json({message: "The email is already registered"})
+    }
+
+    const hashPassword = await bcryt.hash(password, 10)
+
+    const newUser = new User({
+        username,
+        email,
+        password: hashPassword
+    })
+
+    await newUser.save()
+    return res.json({status: true, message: "User created successfully"})
+
+})
+
+router.post("/signin", async (req, res) => {
+    const {email, password} = req.body
+    const user = await User.findOne({email})
+
+    if (!user) {
+        return res.json({message: "User not registered"})
+    }
+
+    const validPassword = await bcryt.compare(password, user.password)
+
+    if (!validPassword) {
+        return res.json({message: "Invalid password"})
+    }
+
+    const token = jwt.sign({username: user.username}, process.env.KEY, {expiresIn: "1h"})
+    res.cookie("token", token, {httpOnly: true, maxAge: 360000})
+    return res.json({status: true, message: "Login successful"})
+})
+
+router.post("/forgot-password", async (req, res) => {
+    const {email} = req.body
+    const user = await User.findOne({email})
+
+    if (!user) {
+        return res.json({message: "User not registered"})
+    }
+
+    const token = jwt.sign({id: user._id}, process.env.KEY, {expiresIn: "5m"})
+
+    var transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: 'jilloerick6@gmail.com',
+          pass: 'rhonhotlxmlvjupu'
+        }
+      });
+
+      var mailOptions = {
+        from: 'jilloerick6@gmail.com',
+        to: email,
+        subject: 'Reset Password',
+        text: `http://localhost:5173/resetpassword/${token}`
+      };
+
+      transporter.sendMail(mailOptions, function(error, info){
+        if (error) {
+            return res.json({message: "Email failed to send"})
+        } else {
+          return res.json({status: true, message: "Email sent"})
+        }
+      });
+
+
+})
+
+router.post("/resetpassword/:token", async (req, res) => {
+    const { token } = req.params
+    const { password } = req.body
+
+    try {
+        const decoded = await jwt.verify(token, process.env.KEY)
+        await User.findByIdAndUpdate(decoded.id, {password: await bcryt.hash(password, 10)})
+        return res.json({status: true, message: "Password updated"})
+    } catch (err) {
+        return res.json({message: "Invalid token"})
+    }
+
+})
+
+export {router as UserRouter}
