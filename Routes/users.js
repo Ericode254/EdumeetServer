@@ -96,4 +96,23 @@ router.post("/resetpassword/:token", async (req, res) => {
 
 })
 
+const verifyUser = async (req, res, next) => {
+    const token = req.cookies.token
+
+    if (!token) {
+        return res.json({status: false, message: "Not authenticated"})
+    }
+
+    const decoded = await jwt.verify(token, process.env.KEY)
+    next()
+}
+router.get("/verify", verifyUser, (req, res) => {
+    return res.json({status: true, message: "Verified"})
+})
+
+router.get("/logout", (req, res) => {
+    res.clearCookie("token")
+    return res.json({status: true, message: "Logged out"})
+})
+
 export {router as UserRouter}
