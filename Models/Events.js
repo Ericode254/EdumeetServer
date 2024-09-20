@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 const EventsSchema = new mongoose.Schema({
     title: {type: String, required: true},
     description: {type: String, required: true},
+    image: {data: Buffer, contentType: String},
     startTime: {type: Date, required: true},
     endTime: {type: Date, required: true},
     speaker: {type: String, required: true},
