@@ -3,13 +3,13 @@ import mongoose from "mongoose";
 const EventsSchema = new mongoose.Schema({
     title: {type: String, required: true},
     description: {type: String, required: true},
-    image: {data: Buffer, contentType: String},
-    startTime: {type: Date, required: true},
-    endTime: {type: Date, required: true},
+    image: {type: String, required: true},
+    startTime: {type: String, required: true},
+    endTime: {type: String, required: true},
     speaker: {type: String, required: true},
-    likes: {type: Number},
-    dislikes: {type: Number},
-    reminder: {type: Boolean}
+    likes: {type: Number, default: 0},
+    dislikes: {type: Number, default: 0},
+    reminder: {type: Boolean, default: false}
 })
 
 const EventsModel = mongoose.model("Event", EventsSchema)

@@ -4,6 +4,7 @@ import mongoose from 'mongoose'
 import { UserRouter } from './Routes/users.js'
 import cors from 'cors'
 import cookieParser from "cookie-parser";
+import { EventRouter } from './Routes/events.js'
 
 dotenv.config()
 
@@ -15,8 +16,9 @@ app.use(cors({
 }))
 app.use(cookieParser())
 app.use("/auth", UserRouter)
+app.use("/events", EventRouter)
 
-mongoose.connect("mongodb://127.0.0.1:27017/authentication")
+mongoose.connect("mongodb://127.0.0.1:27017/Edumeet")
 
 app.listen(process.env.PORT, () => {
     console.log("Server is running on port " + process.env.PORT);
