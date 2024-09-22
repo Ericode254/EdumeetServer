@@ -1,7 +1,6 @@
 import express from "express";
 import { Event } from "../Models/Events.js";
 import multer from "multer";
-import path from "path"; // To manage file paths
 
 const router = express.Router();
 
@@ -11,8 +10,7 @@ var storage = multer.diskStorage({
         cb(null, 'uploads/'); // Directory to store uploaded images
     },
     filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + path.extname(file.originalname);
-        cb(null, file.fieldname + '-' + uniqueSuffix);
+        cb(null, file.originalname);
     },
 
 });
@@ -50,5 +48,18 @@ router.post("/event", upload.single("image"), async (req, res) => {
         return res.status(500).json({ status: false, message: "Server error" });
     }
 });
+
+router.get('/cards', async (req, res) => {
+    try {
+      // Fetch all events from the MongoDB database
+      const events = await Event.find();
+
+      // Respond with the list of events
+      res.json(events);
+    } catch (err) {
+      console.error('Error fetching events:', err);
+      res.status(500).json({ error: 'An error occurred while fetching events.' });
+    }
+  });
 
 export { router as EventRouter };
