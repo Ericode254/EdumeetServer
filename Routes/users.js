@@ -97,18 +97,25 @@ router.post("/resetpassword/:token", async (req, res) => {
 })
 
 const verifyUser = async (req, res, next) => {
-    const token = req.cookies.token
+  try {
+    const token = req.cookies.token;
 
     if (!token) {
-        return res.json({status: false, message: "Not authenticated"})
+      return res.status(401).json({ status: false, message: "Not authenticated" });
     }
 
-    const decoded = await jwt.verify(token, process.env.KEY)
-    next()
-}
+    const decoded = await jwt.verify(token, process.env.KEY);
+
+    next();
+  } catch (error) {
+    return res.status(403).json({ status: false, message: "Invalid or expired token" });
+  }
+};
+
 router.get("/verify", verifyUser, (req, res) => {
-    return res.json({status: true, message: "Verified"})
-})
+  return res.json({ status: true, message: "Verified" });
+});
+
 
 router.get("/logout", (req, res) => {
     res.clearCookie("token")
