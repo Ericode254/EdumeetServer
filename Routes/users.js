@@ -28,22 +28,30 @@ router.post("/signup", async (req, res) => {
 })
 
 router.post("/signin", async (req, res) => {
-    const {email, password} = req.body
-    const user = await User.findOne({email})
+    const { email, password } = req.body;
 
-    if (!user) {
-        return res.json({message: "User not registered"})
+    try {
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(404).json({ status: false, message: "User not registered" });
+        }
+
+        const validPassword = await bcryt.compare(password, user.password);
+
+        if (!validPassword) {
+            return res.status(401).json({ status: false, message: "Invalid password" });
+        }
+
+        const token = jwt.sign({ username: user.username, id: user._id }, process.env.KEY, { expiresIn: "1h" });
+
+        res.cookie("token", token, { httpOnly: true, maxAge: 3600000 }); // Set maxAge to 1 hour
+        return res.json({ status: true, message: "Login successful", token: token });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ status: false, message: "Server error" });
     }
-
-    const validPassword = await bcryt.compare(password, user.password)
-
-    if (!validPassword) {
-        return res.json({message: "Invalid password"})
-    }
-
-    const token = jwt.sign({username: user.username}, process.env.KEY, {expiresIn: "1h"})
-    res.cookie("token", token, {httpOnly: true, maxAge: 360000})
-    return res.json({status: true, message: "Login successful"})
 })
 
 router.post("/forgot-password", async (req, res) => {

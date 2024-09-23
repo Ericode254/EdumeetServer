@@ -9,6 +9,7 @@ const EventsSchema = new mongoose.Schema({
     speaker: {type: String, required: true},
     likes: {type: Number, default: 0},
     dislikes: {type: Number, default: 0},
+    userReactions: [{ userId: String, reaction: String }],
     reminder: {type: Boolean, default: false}
 })
 
