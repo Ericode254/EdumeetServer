@@ -10,7 +10,12 @@ const EventsSchema = new mongoose.Schema({
     likes: {type: Number, default: 0},
     dislikes: {type: Number, default: 0},
     userReactions: [{ userId: String, reaction: String }],
-    reminder: {type: Boolean, default: false}
+    reminder: {type: Boolean, default: false},
+    creatorId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true, // assuming you have user authentication and creator is a reference to the User model
+    },
 })
 
 const EventsModel = mongoose.model("Event", EventsSchema)

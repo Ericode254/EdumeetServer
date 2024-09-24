@@ -1,5 +1,6 @@
 import express from "express";
 import { Event } from "../Models/Events.js";
+import { verifyUser } from "../middleware/authUser.js";
 import multer from "multer";
 
 const router = express.Router();
@@ -16,7 +17,11 @@ var storage = multer.diskStorage({
 
 var upload = multer({ storage: storage });
 
-router.post("/event", upload.single("image"), async (req, res) => {
+router.post("/event", verifyUser, upload.single("image"), async (req, res) => {
+    const userId = req.user.id
+    console.log(userId);
+
+
     try {
         const { title, description, startTime, endTime, speaker } = req.body;
 
@@ -33,6 +38,7 @@ router.post("/event", upload.single("image"), async (req, res) => {
             startTime,
             endTime,
             speaker,
+            creatorId: userId
         });
 
         await newEvent.save();
@@ -69,8 +75,8 @@ router.get("/card/:id/reactions", async (req, res) => {
     }
 });
 // Increment like count
-router.post("/card/:id/like", async (req, res) => {
-    const userId = req.body.userId; // Assume the user ID is sent in the request body
+router.post("/card/:id/like", verifyUser, async (req, res) => {
+    const userId = req.user.userId; // Assume the user ID is sent in the request body
     try {
         const card = await Event.findById(req.params.id);
         if (!card) {
@@ -102,8 +108,8 @@ router.post("/card/:id/like", async (req, res) => {
 });
 
 // Increment dislike count
-router.post("/card/:id/dislike", async (req, res) => {
-    const userId = req.body.userId; // Assume the user ID is sent in the request body
+router.post("/card/:id/dislike", verifyUser, async (req, res) => {
+    const userId = req.user.userId; // Assume the user ID is sent in the request body
     try {
         const card = await Event.findById(req.params.id);
         if (!card) {
@@ -134,5 +140,69 @@ router.post("/card/:id/dislike", async (req, res) => {
     }
 });
 
+// GET: Fetch an event by ID (for editing)
+router.get('/card/:id', verifyUser, async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const event = await Event.findById(id);
+        if (!event) {
+            return res.status(404).json({ status: false, message: 'Event not found' });
+        }
+
+        res.status(200).json(event);
+    } catch (error) {
+        console.error("Error fetching event:", error);
+        res.status(500).json({ status: false, message: 'Error fetching event' });
+    }
+});
+
+// PUT: Update an existing event
+router.put('/event/:id', verifyUser, upload.single('image'), async (req, res) => {
+    const { id } = req.params;
+    const { title, description, startTime, endTime, speaker } = req.body;
+    const image = req.file ? req.file.filename : null;
+
+    try {
+        const event = await Event.findById(id);
+
+        if (!event) {
+            return res.status(404).json({ status: false, message: 'Event not found' });
+        }
+
+        // Update the event fields
+        event.title = title || event.title;
+        event.description = description || event.description;
+        if (image) {
+            event.image = image;
+        }
+        event.startTime = startTime || event.startTime;
+        event.endTime = endTime || event.endTime;
+        event.speaker = speaker || event.speaker;
+
+        await event.save();
+        res.status(200).json({ status: true, message: 'Event updated successfully', event });
+    } catch (error) {
+        console.error("Error updating event:", error);
+        res.status(500).json({ status: false, message: 'Error updating event' });
+    }
+});
+
+// DELETE: Delete an event by ID
+router.delete('/event/:id', verifyUser, async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const event = await Event.findByIdAndDelete(id);
+        if (!event) {
+            return res.status(404).json({ status: false, message: 'Event not found' });
+        }
+
+        res.status(200).json({ status: true, message: 'Event deleted successfully' });
+    } catch (error) {
+        console.error("Error deleting event:", error);
+        res.status(500).json({ status: false, message: 'Error deleting event' });
+    }
+});
 
 export { router as EventRouter };
