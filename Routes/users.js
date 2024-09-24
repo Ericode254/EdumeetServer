@@ -3,8 +3,11 @@ import bcryt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import { User } from '../Models/Users.js'
 import nodemailer from "nodemailer"
+import dotenv from 'dotenv'
+
 
 const router = express.Router()
+dotenv.config()
 
 router.post("/signup", async (req, res) => {
     const {username, email, password} = req.body
@@ -45,7 +48,7 @@ router.post("/signin", async (req, res) => {
 
         const token = jwt.sign({ username: user.username, id: user._id }, process.env.KEY, { expiresIn: "1h" });
 
-        res.cookie("token", token, { httpOnly: true, maxAge: 3600000 }); // Set maxAge to 1 hour
+        res.cookie("token", token, { httpOnly: false, maxAge: 3600000, sameSite: "none", secure: false }); // Set maxAge to 1 hour
         return res.json({ status: true, message: "Login successful", token: token });
 
     } catch (error) {
@@ -67,13 +70,13 @@ router.post("/forgot-password", async (req, res) => {
     var transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
-          user: 'jilloerick6@gmail.com',
-          pass: 'rhonhotlxmlvjupu'
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
         }
       });
 
       var mailOptions = {
-        from: 'jilloerick6@gmail.com',
+        from: process.env.EMAIL_USER,
         to: email,
         subject: 'Reset Password',
         text: `http://localhost:5173/resetpassword/${token}`
@@ -113,6 +116,7 @@ const verifyUser = async (req, res, next) => {
     }
 
     const decoded = await jwt.verify(token, process.env.KEY);
+    req.user = decoded;
 
     next();
   } catch (error) {
@@ -129,5 +133,34 @@ router.get("/logout", (req, res) => {
     res.clearCookie("token")
     return res.json({status: true, message: "Logged out"})
 })
+
+router.get("/profile", async (req, res) => {
+  try {
+    // Retrieve token from cookies
+    const token = req.cookies.token;
+    // console.log(token);
+
+    if (!token) {
+      return res.status(401).json({ message: "Unauthorized - No Token Provided" });
+    }
+
+    // Verify the token
+    const decoded = jwt.verify(token, process.env.KEY);
+
+    // Fetch user from the database using the decoded token's user ID
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Send back the user's information
+    return res.json({ username: user.username, email: user.email });
+  } catch (error) {
+    console.error("Error in profile route:", error);
+    return res.status(401).json({ message: "Unauthorized - Invalid or Malformed Token" });
+  }
+});
+
 
 export {router as UserRouter}
