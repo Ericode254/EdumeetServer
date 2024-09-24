@@ -2,8 +2,14 @@ import express from "express";
 import { Event } from "../Models/Events.js";
 import { verifyUser } from "../middleware/authUser.js";
 import multer from "multer";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const router = express.Router();
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 var storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -18,9 +24,7 @@ var storage = multer.diskStorage({
 var upload = multer({ storage: storage });
 
 router.post("/event", verifyUser, upload.single("image"), async (req, res) => {
-    const userId = req.user.id
-    console.log(userId);
-
+    const userId = req.user.id;
 
     try {
         const { title, description, startTime, endTime, speaker } = req.body;
@@ -188,21 +192,47 @@ router.put('/event/:id', verifyUser, upload.single('image'), async (req, res) =>
     }
 });
 
-// DELETE: Delete an event by ID
+
 router.delete('/event/:id', verifyUser, async (req, res) => {
     const { id } = req.params;
 
     try {
-        const event = await Event.findByIdAndDelete(id);
+        // Check if the event exists
+        const event = await Event.findById(id);
+
         if (!event) {
             return res.status(404).json({ status: false, message: 'Event not found' });
         }
 
-        res.status(200).json({ status: true, message: 'Event deleted successfully' });
+        // Check if the user is authorized to delete the event
+        if (event.creatorId.toString() !== req.user.id.toString()) {
+            return res.status(403).json({ status: false, message: 'Not authorized to delete this event' });
+        }
+
+        // Store the image path for deletion
+        const imagePath = path.join(__dirname, '../uploads', event.image); // Adjust the path based on your structure
+
+        // Delete the event
+        await Event.findByIdAndDelete(id);
+
+        // Delete the associated image file
+        if (event.image) {
+            fs.unlink(imagePath, (err) => {
+                if (err) {
+                    console.error("Error deleting image:", err);
+                    // You can choose to send a response indicating an issue but continue with event deletion
+                } else {
+                    console.log("Image deleted successfully");
+                }
+            });
+        }
+
+        res.status(200).json({ status: true, message: 'Event deleted successfully', eventId: id });
     } catch (error) {
         console.error("Error deleting event:", error);
         res.status(500).json({ status: false, message: 'Error deleting event' });
     }
 });
+
 
 export { router as EventRouter };
