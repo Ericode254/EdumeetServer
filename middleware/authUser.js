@@ -20,4 +20,13 @@ const verifyUser = async (req, res, next) => {
     }
 };
 
-export { verifyUser }
+// Middleware for verifying admin role
+const verifyAdmin = (req, res, next) => {
+    if (req.user.role !== 'admin') { // Assuming the role is attached to the `req.user`
+        return res.status(403).json({ message: "Access denied. Admins only." });
+    }
+
+    next(); // If role is 'admin', proceed to the next middleware or route
+};
+
+export { verifyUser, verifyAdmin }

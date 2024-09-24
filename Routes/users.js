@@ -47,7 +47,7 @@ router.post("/signin", async (req, res) => {
       return res.status(401).json({ status: false, message: "Invalid password" });
     }
 
-    const token = jwt.sign({ username: user.username, id: user._id }, process.env.KEY, { expiresIn: "1h" });
+    const token = jwt.sign({ username: user.username, id: user._id, role: user.role }, process.env.KEY, { expiresIn: "1h" });
 
     res.cookie("token", token, { httpOnly: true, maxAge: 3600000 }); // Set maxAge to 1 hour
     return res.json({ status: true, message: "Login successful", token: token });
@@ -143,6 +143,92 @@ router.get("/profile", async (req, res) => {
   } catch (error) {
     console.error("Error in profile route:", error);
     return res.status(401).json({ message: "Unauthorized - Invalid or Malformed Token" });
+  }
+});
+
+// Route to get user role by userId
+router.get('/user/:id', verifyUser, async (req, res) => {
+  const userId = req.params.id;
+
+  try {
+    const user = await User.findById(userId, 'role name'); // Fetch only the role and name fields
+
+    if (!user) {
+      return res.status(404).json({ status: false, message: 'User not found' });
+    }
+
+    return res.status(200).json({ status: true, role: user.role, name: user.name });
+  } catch (error) {
+    console.error('Error fetching user role:', error);
+    return res.status(500).json({ status: false, message: 'Server error' });
+  }
+});
+
+// Route to get all users (for admin dashboard)
+router.get('/users', verifyUser, async (req, res) => {
+  try {
+    // Check if the user is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ status: false, message: 'Forbidden: Only admin can access this route' });
+    }
+
+    const users = await User.find(); // Fetch all users
+    return res.status(200).json(users);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    return res.status(500).json({ status: false, message: 'Server error' });
+  }
+});
+
+// Route to update a user's role
+router.put('/user/:id/role', verifyUser, async (req, res) => {
+  const userId = req.params.id;
+  const { role } = req.body;
+
+  try {
+    // Check if the user is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ status: false, message: 'Forbidden: Only admin can access this route' });
+    }
+
+    // Validate role
+    if (!['admin', 'user', 'publisher'].includes(role)) {
+      return res.status(400).json({ status: false, message: 'Invalid role' });
+    }
+
+    const user = await User.findByIdAndUpdate(userId, { role }, { new: true });
+
+    if (!user) {
+      return res.status(404).json({ status: false, message: 'User not found' });
+    }
+
+    return res.status(200).json({ status: true, message: 'User role updated successfully', user });
+  } catch (error) {
+    console.error('Error updating user role:', error);
+    return res.status(500).json({ status: false, message: 'Server error' });
+  }
+});
+
+// Route to delete a user
+router.delete('/user/:id', verifyUser, async (req, res) => {
+  const userId = req.params.id;
+
+  try {
+    // Check if the user is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ status: false, message: 'Forbidden: Only admin can access this route' });
+    }
+
+    const user = await User.findByIdAndDelete(userId);
+
+    if (!user) {
+      return res.status(404).json({ status: false, message: 'User not found' });
+    }
+
+    return res.status(200).json({ status: true, message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    return res.status(500).json({ status: false, message: 'Server error' });
   }
 });
 

@@ -1,6 +1,6 @@
 import express from "express";
 import { Event } from "../Models/Events.js";
-import { verifyUser } from "../middleware/authUser.js";
+import { verifyAdmin, verifyUser } from "../middleware/authUser.js";
 import multer from "multer";
 import fs from "fs";
 import path from "path";
@@ -23,7 +23,7 @@ var storage = multer.diskStorage({
 
 var upload = multer({ storage: storage });
 
-router.post("/event", verifyUser, upload.single("image"), async (req, res) => {
+router.post("/event", verifyUser, verifyAdmin, upload.single("image"), async (req, res) => {
     const userId = req.user.id;
 
     try {
@@ -234,5 +234,15 @@ router.delete('/event/:id', verifyUser, async (req, res) => {
     }
 });
 
+// Route to get total events
+router.get('/events', verifyUser, async (req, res) => {
+    try {
+        const events = await Event.find();
+        return res.json(events);
+    } catch (error) {
+        console.error('Error fetching events:', error);
+        return res.status(500).json({ status: false, message: 'Server error' });
+    }
+});
 
 export { router as EventRouter };
