@@ -5,6 +5,7 @@ import multer from "multer";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import mongoose from "mongoose";
 
 const router = express.Router();
 
@@ -80,7 +81,8 @@ router.get("/card/:id/reactions", async (req, res) => {
 });
 // Increment like count
 router.post("/card/:id/like", verifyUser, async (req, res) => {
-    const userId = req.user.userId; // Assume the user ID is sent in the request body
+    const userId = req.user.id; // Assuming req.user.id contains the current user ID
+
     try {
         const card = await Event.findById(req.params.id);
         if (!card) {
@@ -88,7 +90,8 @@ router.post("/card/:id/like", verifyUser, async (req, res) => {
         }
 
         // Check if user has already reacted
-        const existingReaction = card.userReactions.find(reaction => reaction.userId === userId);
+        const existingReaction = card.userReactions.find(reaction => reaction.userId.toString() === userId.toString());
+
         if (existingReaction) {
             if (existingReaction.reaction === 'like') {
                 return res.status(400).json({ message: "You have already liked this card." });
@@ -101,7 +104,7 @@ router.post("/card/:id/like", verifyUser, async (req, res) => {
         } else {
             // Add new like
             card.likes += 1;
-            card.userReactions.push({ userId, reaction: 'like' });
+            card.userReactions.push({ userId: new mongoose.Types.ObjectId(userId), reaction: 'like' });
         }
 
         await card.save();
@@ -113,7 +116,8 @@ router.post("/card/:id/like", verifyUser, async (req, res) => {
 
 // Increment dislike count
 router.post("/card/:id/dislike", verifyUser, async (req, res) => {
-    const userId = req.user.userId; // Assume the user ID is sent in the request body
+    const userId = req.user.id; // Assuming req.user.id contains the current user ID
+
     try {
         const card = await Event.findById(req.params.id);
         if (!card) {
@@ -121,7 +125,8 @@ router.post("/card/:id/dislike", verifyUser, async (req, res) => {
         }
 
         // Check if user has already reacted
-        const existingReaction = card.userReactions.find(reaction => reaction.userId === userId);
+        const existingReaction = card.userReactions.find(reaction => reaction.userId.toString() === userId.toString());
+
         if (existingReaction) {
             if (existingReaction.reaction === 'dislike') {
                 return res.status(400).json({ message: "You have already disliked this card." });
@@ -134,7 +139,7 @@ router.post("/card/:id/dislike", verifyUser, async (req, res) => {
         } else {
             // Add new dislike
             card.dislikes += 1;
-            card.userReactions.push({ userId, reaction: 'dislike' });
+            card.userReactions.push({ userId: new mongoose.Types.ObjectId(userId), reaction: 'dislike' });
         }
 
         await card.save();
@@ -162,7 +167,7 @@ router.get('/card/:id', verifyUser, async (req, res) => {
 });
 
 // PUT: Update an existing event
-router.put('/event/:id', verifyUser, upload.single('image'), async (req, res) => {
+router.put('/event/:id', verifyUser, verifyAdmin, upload.single('image'), async (req, res) => {
     const { id } = req.params;
     const { title, description, startTime, endTime, speaker } = req.body;
     const image = req.file ? req.file.filename : null;
@@ -193,7 +198,7 @@ router.put('/event/:id', verifyUser, upload.single('image'), async (req, res) =>
 });
 
 
-router.delete('/event/:id', verifyUser, async (req, res) => {
+router.delete('/event/:id', verifyUser, verifyAdmin, async (req, res) => {
     const { id } = req.params;
 
     try {
@@ -205,9 +210,10 @@ router.delete('/event/:id', verifyUser, async (req, res) => {
         }
 
         // Check if the user is authorized to delete the event
-        if (event.creatorId.toString() !== req.user.id.toString()) {
+        if (event.creatorId.toString() !== req.user.id.toString() && req.user.role !== 'admin') {
             return res.status(403).json({ status: false, message: 'Not authorized to delete this event' });
         }
+
 
         // Store the image path for deletion
         const imagePath = path.join(__dirname, '../uploads', event.image); // Adjust the path based on your structure

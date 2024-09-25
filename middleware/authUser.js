@@ -22,7 +22,7 @@ const verifyUser = async (req, res, next) => {
 
 // Middleware for verifying admin role
 const verifyAdmin = (req, res, next) => {
-    if (req.user.role !== 'admin') { // Assuming the role is attached to the `req.user`
+    if ((req.user.role === 'user')) { // Assuming the role is attached to the `req.user`
         return res.status(403).json({ message: "Access denied. Admins only." });
     }
 
