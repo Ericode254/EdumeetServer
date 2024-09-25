@@ -28,7 +28,7 @@ router.post("/event", verifyUser, verifyAdmin, upload.single("image"), async (re
     const userId = req.user.id;
 
     try {
-        const { title, description, startTime, endTime, speaker } = req.body;
+        const { title, description, startTime, endTime, eventDay, speaker } = req.body;
 
         if (!req.file) {
             return res.status(400).json({ status: false, message: "Image is required" });
@@ -42,6 +42,7 @@ router.post("/event", verifyUser, verifyAdmin, upload.single("image"), async (re
             image: imageName,
             startTime,
             endTime,
+            eventDay,
             speaker,
             creatorId: userId
         });
