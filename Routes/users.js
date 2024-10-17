@@ -5,31 +5,56 @@ import { User } from '../Models/Users.js'
 import { verifyUser } from '../middleware/authUser.js'
 import nodemailer from "nodemailer"
 import dotenv from 'dotenv'
+import { check, validationResult } from "express-validator"
 
 
 const router = express.Router()
 dotenv.config()
 
-router.post("/signup", async (req, res) => {
-  const { username, email, password } = req.body
-  const user = await User.findOne({ email })
+router.post(
+  "/signup",
+  [
+    check('username')
+      .notEmpty().withMessage('Username is required')
+      .isLength({ min: 3 }).withMessage('Username must be at least 3 characters long'),
+    check('email')
+      .isEmail().withMessage('Must be a valid email')
+      .custom(async (email) => {
+        const user = await User.findOne({ email });
+        if (user) {
+          throw new Error('Email is already registered');
+        }
+      }),
+    check('password')
+      .isLength({ min: 6 }).withMessage('Password must be at least 6 characters long')
+    // .matches(/\d/).withMessage('Password must contain a number'),
+  ],
+  async (req, res) => {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
 
-  if (user) {
-    return res.json({ message: "The email is already registered" })
+    const { username, email, password } = req.body;
+
+    try {
+      const hashPassword = await bcryt.hash(password, 10);
+
+      const newUser = new User({
+        username,
+        email,
+        password: hashPassword,
+      });
+
+      await newUser.save();
+      return res.json({ status: true, message: "User created successfully" });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ status: false, message: "Server error" });
+    }
   }
-
-  const hashPassword = await bcryt.hash(password, 10)
-
-  const newUser = new User({
-    username,
-    email,
-    password: hashPassword
-  })
-
-  await newUser.save()
-  return res.json({ status: true, message: "User created successfully" })
-
-})
+);
 
 router.post("/signin", async (req, res) => {
   const { email, password } = req.body;
